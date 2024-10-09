@@ -1,7 +1,96 @@
-<p>Hello</p>
-<p>This is my Demo website </p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>录音界面</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
 
-<ul>
-  <li> <a href="https://www.zhihu.com/people/AJLoveChina">知乎</a> </li>
-  <li> <a href="http://hejie.nigeerhuo.com">test</a> </li>
-</ul>
+        #recordButton {
+            padding: 20px 40px;
+            font-size: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #recordButton:active {
+            background-color: #45a049;
+        }
+
+        #timer {
+            margin-top: 20px;
+            font-size: 24px;
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <button id="recordButton">开始录音</button>
+        <div id="timer">00:00</div>
+    </div>
+
+    <script>
+        var isRecording = false;
+        var startTime;
+        var timerInterval;
+
+        function updateTimer() {
+            var now = new Date().getTime();
+            var elapsedTime = now - startTime;
+
+            var minutes = Math.floor(elapsedTime / 60000);
+            var seconds = Math.floor((elapsedTime % 60000) / 1000);
+
+            if (minutes < 10) minutes = "0" + minutes;
+            if (seconds < 10) seconds = "0" + seconds;
+
+            $('#timer').text(minutes + ":" + seconds);
+        }
+
+        $('#recordButton').click(function() {
+            if (!isRecording) {
+                // 开始录音
+                $.post('/start', {
+                    output_folder: 'my_audio_files',
+                    output_wav: 'output.wav'
+                }, function(response) {
+                    console.log(response.message);
+                });
+
+                $('#recordButton').text('停止录音');
+                isRecording = true;
+
+                // 开始计时
+                startTime = new Date().getTime();
+                timerInterval = setInterval(updateTimer, 1000);
+            } else {
+                // 停止录音
+                $.post('/stop', {}, function(response) {
+                    console.log(response.message);
+                });
+
+                $('#recordButton').text('开始录音');
+                isRecording = false;
+
+                // 停止计时
+                clearInterval(timerInterval);
+                $('#timer').text('00:00');
+            }
+        });
+    </script>
+</body>
+</html>
