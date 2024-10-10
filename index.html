@@ -2,95 +2,141 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>录音界面</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <title>Voice Clone - Static Version</title>
     <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            font-family: Arial, sans-serif;
+        .container {
+            max-width: 1240px;
+            margin: 20px auto 50px;
         }
-
-        #recordButton {
-            padding: 20px 40px;
-            font-size: 20px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
+        .form-label, .form-control {
+            margin-top: .5rem;
         }
-
-        #recordButton:active {
-            background-color: #45a049;
-        }
-
-        #timer {
-            margin-top: 20px;
-            font-size: 24px;
-            color: #333;
-            text-align: center;
+        .btn-record {
+            margin-right: 10px;
         }
     </style>
 </head>
 <body>
-    <div>
-        <button id="recordButton">开始录音</button>
-        <div id="timer">00:00</div>
+<div class="container mb-2">
+    <div class="alert rounded-0" role="alert">
+        <p class="mb-0">Record or upload an audio file for cloning.</p>
     </div>
+    <div class="p-3 shadow bg-white">
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <label for="languageSelect" class="form-label">Language:</label>
+                <select class="form-select" id="languageSelect">
+                    <option value="en">English</option>
+                    <option value="zh-cn">中文</option>
+                    <option value="es">Español</option>
+                    <!-- Add other languages as needed -->
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="audioFileInput" class="form-label">Choose Audio File:</label>
+                <input type="file" id="audioFileInput" accept="audio/*" class="form-control" onchange="loadLocalFile(event)">
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-sm btn-primary" id="startRecord">Start Recording</button>
+                <button class="btn btn-sm btn-danger" id="stopRecord" disabled>Stop Recording</button>
+                <audio class="mt-1" id="audioPlayer" controls></audio>
+            </div>
+        </div>
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <textarea class="form-control" id="textInput" placeholder="Type text here..." rows="5"></textarea>
+            </div>
+        </div>
+        <div class="row mt-4 text-center">
+            <button id="synthesizeButton" class="btn btn-success" onclick="synthesizeSpeech()">Synthesize</button>
+        </div>
+    </div>
+</div>
 
-    <script>
-        var isRecording = false;
-        var startTime;
-        var timerInterval;
+<!-- Newsletter Subscription Section -->
+<section class="py-5 my-md-5">
+    <div class="container">
+        <div class="row justify-content-center text-center">
+            <div class="col-lg-8">
+                <span class="text-muted">Newsletter</span>
+                <h2 class="display-5 fw-bold">Subscribe Today</h2>
+                <p class="lead">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam feugiat erat quis pulvinar semper. Cras commodo vitae libero ut consequat.</p>
+            </div>
+        </div>
+        <div class="row justify-content-center text-center">
+            <div class="col-lg-6">
+                <div class="mx-auto">
+                    <form class="row g-3 justify-content-center">
+                        <div class="col-md-6">
+                            <input class="form-control bg-light" placeholder="First name" type="text">
+                        </div>
+                        <div class="col-md-6">
+                            <input class="form-control bg-light" placeholder="Last name" type="text">
+                        </div>
+                        <div class="col-md-12">
+                            <input class="form-control bg-light" placeholder="Email address" type="text">
+                        </div>
+                        <div class="col-md-5">
+                            <div class="d-grid mx-auto">
+                                <button class="btn btn-primary" type="submit">Subscribe</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
-        function updateTimer() {
-            var now = new Date().getTime();
-            var elapsedTime = now - startTime;
+<script>
+    // 录音和播放功能
+    let mediaRecorder;
+    let audioChunks = [];
 
-            var minutes = Math.floor(elapsedTime / 60000);
-            var seconds = Math.floor((elapsedTime % 60000) / 1000);
+    document.getElementById('startRecord').addEventListener('click', startRecording);
+    document.getElementById('stopRecord').addEventListener('click', stopRecording);
 
-            if (minutes < 10) minutes = "0" + minutes;
-            if (seconds < 10) seconds = "0" + seconds;
-
-            $('#timer').text(minutes + ":" + seconds);
-        }
-
-        $('#recordButton').click(function() {
-            if (!isRecording) {
-                // 开始录音
-                $.post('/start', {
-                    output_folder: 'my_audio_files',
-                    output_wav: 'output.wav'
-                }, function(response) {
-                    console.log(response.message);
-                });
-
-                $('#recordButton').text('停止录音');
-                isRecording = true;
-
-                // 开始计时
-                startTime = new Date().getTime();
-                timerInterval = setInterval(updateTimer, 1000);
-            } else {
-                // 停止录音
-                $.post('/stop', {}, function(response) {
-                    console.log(response.message);
-                });
-
-                $('#recordButton').text('开始录音');
-                isRecording = false;
-
-                // 停止计时
-                clearInterval(timerInterval);
-                $('#timer').text('00:00');
-            }
+    function startRecording() {
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = event => {
+                if (event.data.size > 0) audioChunks.push(event.data);
+            };
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                document.getElementById('audioPlayer').src = audioUrl;
+                audioChunks = [];
+            };
+            mediaRecorder.start();
         });
-    </script>
+        document.getElementById('stopRecord').disabled = false;
+        document.getElementById('startRecord').disabled = true;
+    }
+
+    function stopRecording() {
+        mediaRecorder.stop();
+        document.getElementById('stopRecord').disabled = true;
+        document.getElementById('startRecord').disabled = false;
+    }
+
+    function loadLocalFile(event) {
+        const file = event.target.files[0];
+        const url = URL.createObjectURL(file);
+        document.getElementById('audioPlayer').src = url;
+    }
+
+    function synthesizeSpeech() {
+        const text = document.getElementById('textInput').value;
+        if (!text) {
+            alert('Please enter text to synthesize.');
+            return;
+        }
+        const speech = new SpeechSynthesisUtterance(text);
+        speechSynthesis.speak(speech);
+    }
+</script>
 </body>
 </html>
